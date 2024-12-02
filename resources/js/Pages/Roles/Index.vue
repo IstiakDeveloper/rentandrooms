@@ -1,46 +1,44 @@
 <template>
-<Head title="Admin Role" />
-<AdminLayout>
-  <div class="container mx-auto py-8">
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-semibold text-gray-700">Roles</h1>
-      <Link href="/roles/create" class="btn-primary">Create Role</Link>
-    </div>
+    <Head title="Admin Role" />
+    <AdminLayout>
+      <div class="container mx-auto py-8">
+        <div class="flex justify-between items-center mb-6">
+          <h1 class="text-2xl font-semibold text-gray-700 dark:text-gray-200">Roles</h1>
+          <Link href="/roles/create" class="btn-primary">Create Role</Link>
+        </div>
 
-    <div class="bg-white shadow rounded-lg overflow-hidden">
-      <table class="min-w-full bg-white">
-        <thead class="bg-gray-100 border-b">
-          <tr>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Role Name
-            </th>
-            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200">
-          <tr v-for="role in roles" :key="role.id">
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-              {{ role.name }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-right space-x-2">
-              <Link :href="`/roles/${role.id}/edit`" class="btn-secondary">
-                Edit
-              </Link>
-              <button @click="confirmDelete(role.id)" class="btn-danger">Delete</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+          <table class="min-w-full bg-white dark:bg-gray-800">
+            <thead class="bg-gray-100 dark:bg-gray-700 border-b">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Role Name
+                </th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+              <tr v-for="role in roles" :key="role.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                  {{ role.name }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-right space-x-2">
+                  <Link :href="`/roles/${role.id}/edit`" class="btn-secondary">Edit</Link>
+                  <button @click="confirmDelete(role.id)" class="btn-danger">Delete</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-    <!-- Confirm Dialog Component -->
-    <ConfirmDialog :show="showDialog" @update:show="showDialog = false" @confirm="deleteRole" />
-  </div>
-</AdminLayout>
+        <!-- Confirm Dialog Component -->
+        <ConfirmDialog :show="showDialog" @update:show="showDialog = false" @confirm="deleteRole" />
+      </div>
+    </AdminLayout>
+  </template>
 
-</template>
 
 <script setup>
 import { ref } from 'vue';

@@ -1,113 +1,112 @@
 <template>
-  <Head title="Admin User" />
+    <Head title="Admin User" />
 
-  <AdminLayout>
-    <div class="container mx-auto py-8">
-        <div class="bg-white shadow-lg rounded-lg p-8">
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl font-bold text-gray-800">Users</h1>
+    <AdminLayout>
+      <div class="container mx-auto py-8">
+        <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-8">
+          <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-800 dark:text-white">Users</h1>
             <button @click="openCreateModal" class="btn-primary">Add User</button>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-            <thead>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+              <thead>
                 <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roles</th>
-                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Roles</th>
+                  <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                 </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
+              </thead>
+              <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-600">
                 <tr v-for="user in users" :key="user.id">
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ user.name }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ user.email }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ user.roles.map(role => role.name).join(', ') }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button @click="openEditModal(user)" class="text-blue-600 hover:text-blue-900">Edit</button>
-                    <button @click="confirmDelete(user.id)" class="text-red-600 hover:text-red-900 ml-4">Delete</button>
-                  <Link :href="`/users/${user.id}`" class="text-green-600 hover:text-green-900 ml-4">Show</Link>
-                </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{{ user.name }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ user.email }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ user.roles.map(role => role.name).join(', ') }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button @click="openEditModal(user)" class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-500">Edit</button>
+                    <button @click="confirmDelete(user.id)" class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-500 ml-4">Delete</button>
+                    <Link :href="`/users/${user.id}`" class="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-500 ml-4">Show</Link>
+                  </td>
                 </tr>
-            </tbody>
+              </tbody>
             </table>
-        </div>
-        </div>
-
-
-      <!-- Create/Edit User Modal -->
-      <transition name="fade">
-        <div v-if="showModal" class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-          <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
-            <h2 class="text-2xl font-bold mb-4">{{ isEditing ? 'Edit' : 'Create' }} User</h2>
-            <form @submit.prevent="submit">
-              <div class="mb-4">
-                <label for="name" class="block text-sm font-medium text-gray-700">Name</label>
-                <input
-                  type="text"
-                  id="name"
-                  v-model="form.name"
-                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                  required
-                />
-              </div>
-              <div class="mb-4">
-                <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
-                <input
-                  type="email"
-                  id="email"
-                  v-model="form.email"
-                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                  required
-                />
-              </div>
-              <div class="mb-4">
-                <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
-                <input
-                  type="password"
-                  id="password"
-                  v-model="form.password"
-                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                  :required="!isEditing"
-                />
-              </div>
-              <div class="mb-4">
-                <label for="password_confirmation" class="block text-sm font-medium text-gray-700">Confirm Password</label>
-                <input
-                  type="password"
-                  id="password_confirmation"
-                  v-model="form.password_confirmation"
-                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                  :required="!isEditing"
-                />
-              </div>
-              <div class="mb-4">
-                <label for="role" class="block text-sm font-medium text-gray-700">Role</label>
-                <select
-                id="role"
-                v-model="form.role"
-                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                required
-                >
-                <option value="" disabled>Select a role</option>
-                <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
-                </select>
-
-              </div>
-              <div class="flex justify-end space-x-4">
-                <button type="button" @click="closeModal" class="btn-secondary">Cancel</button>
-                <button type="submit" class="btn-primary">{{ isEditing ? 'Update' : 'Create' }}</button>
-              </div>
-            </form>
           </div>
         </div>
-      </transition>
 
-      <!-- Confirm Dialog Component -->
-      <ConfirmDialog :show="showDialog" @update:show="showDialog = false" @confirm="deleteUser" />
-    </div>
-  </AdminLayout>
-</template>
+        <!-- Create/Edit User Modal -->
+        <transition name="fade">
+          <div v-if="showModal" class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-md w-full">
+              <h2 class="text-2xl font-bold mb-4 text-gray-800 dark:text-white">{{ isEditing ? 'Edit' : 'Create' }} User</h2>
+              <form @submit.prevent="submit">
+                <div class="mb-4">
+                  <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+                  <input
+                    type="text"
+                    id="name"
+                    v-model="form.name"
+                    class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm"
+                    required
+                  />
+                </div>
+                <div class="mb-4">
+                  <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+                  <input
+                    type="email"
+                    id="email"
+                    v-model="form.email"
+                    class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm"
+                    required
+                  />
+                </div>
+                <div class="mb-4">
+                  <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
+                  <input
+                    type="password"
+                    id="password"
+                    v-model="form.password"
+                    class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm"
+                    :required="!isEditing"
+                  />
+                </div>
+                <div class="mb-4">
+                  <label for="password_confirmation" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm Password</label>
+                  <input
+                    type="password"
+                    id="password_confirmation"
+                    v-model="form.password_confirmation"
+                    class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm"
+                    :required="!isEditing"
+                  />
+                </div>
+                <div class="mb-4">
+                  <label for="role" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Role</label>
+                  <select
+                    id="role"
+                    v-model="form.role"
+                    class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm"
+                    required
+                  >
+                    <option value="" disabled>Select a role</option>
+                    <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
+                  </select>
+                </div>
+                <div class="flex justify-end space-x-4">
+                  <button type="button" @click="closeModal" class="btn-secondary">Cancel</button>
+                  <button type="submit" class="btn-primary">{{ isEditing ? 'Update' : 'Create' }}</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </transition>
+
+        <!-- Confirm Dialog Component -->
+        <ConfirmDialog :show="showDialog" @update:show="showDialog = false" @confirm="deleteUser" />
+      </div>
+    </AdminLayout>
+  </template>
+
 
 <script setup>
 import { ref } from 'vue';

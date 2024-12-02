@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\PackageController;
 use App\Http\Controllers\Profile\DocumentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RolePermission\PermissionController;
@@ -62,12 +63,19 @@ Route::middleware('auth')->group(function () {
         Route::put('/{user}', [UserController::class, 'update'])->name('update');
         Route::delete('/{user}', [UserController::class, 'destroy'])->name('destroy');
     });
-       
+
     Route::get('/documents', [DocumentController::class, 'index'])->name('documents.index');
     Route::post('/documents', [DocumentController::class, 'store'])->name('documents.store');
     Route::post('/bank-details', [DocumentController::class, 'storeBankDetails'])->name('bank-details.store');
     Route::get('/documents/download/{id}/{type}', [DocumentController::class, 'download'])->name('documents.download');
 
+});
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/admin/packages/create', [PackageController::class, 'create'])->name('admin.packages.create');
+    Route::post('/admin/packages', [PackageController::class, 'store'])->name('admin.packages.store');
+    Route::get('/admin/cities/{country}', [PackageController::class, 'getCities']);
+    Route::get('/admin/areas/{city}', [PackageController::class, 'getAreas']);
 });
 
 require __DIR__.'/auth.php';

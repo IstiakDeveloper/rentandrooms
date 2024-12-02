@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Amenity;
 use App\Models\Area;
 use App\Models\City;
@@ -13,267 +12,189 @@ use App\Models\Maintain;
 use App\Models\Package;
 use App\Models\Property;
 use App\Models\RoomPrice;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
-
 class PackageController extends Controller
 {
+    /**
+     * Display the create package page.
+     */
     public function create()
     {
         $user = Auth::user();
 
-        // Get initial data based on user role
-        $initialData = $this->getInitialData($user);
+        // Load all the required data
+        $countries = Country::all();
+        $properties = Property::when(!$user->hasRole('Super Admin'), function ($query) use ($user) {
+            return $query->where('user_id', $user->id);
+        })->get();
 
-        return Inertia::render('Admin/Packages/Create', $initialData);
+        $maintains = Maintain::when(!$user->hasRole('Super Admin'), function ($query) use ($user) {
+            return $query->where('user_id', $user->id);
+        })->get();
+
+        $amenities = Amenity::when(!$user->hasRole('Super Admin'), function ($query) use ($user) {
+            return $query->where('user_id', $user->id);
+        })->get();
+
+        return Inertia::render('Admin/Packages/Create', [
+            'countries' => $countries,
+            'properties' => $properties,
+            'maintains' => $maintains,
+            'amenities' => $amenities,
+        ]);
     }
 
-    private function getInitialData($user)
-    {
-        $isSuperAdmin = $user->roles->pluck('name')->contains('Super Admin');
-
-        return [
-            'countries' => Country::all(),
-            'properties' => $isSuperAdmin ? Property::all() : Property::where('user_id', $user->id)->get(),
-            'maintains' => $isSuperAdmin ? Maintain::all() : Maintain::where('user_id', $user->id)->get(),
-            'amenities' => $isSuperAdmin ? Amenity::all() : Amenity::where('user_id', $user->id)->get(),
-            'initialRoom' => [
-                'name' => '',
-                'number_of_beds' => 0,
-                'number_of_bathrooms' => 0,
-                'prices' => [
-                    [
-                        'type' => '',
-                        'fixed_price' => 0,
-                        'discount_price' => null,
-                        'booking_price' => 0
-                    ]
-                ]
-            ],
-            'initialEntireProperty' => [
-                'prices' => [
-                    [
-                        'type' => '',
-                        'fixed_price' => 0,
-                        'discount_price' => null,
-                        'booking_price' => 0
-                    ]
-                ]
-            ]
-        ];
-    }
-
-    public function getCities($countryId)
-    {
-        $cities = City::where('country_id', $countryId)->get();
-        return response()->json($cities);
-    }
-
-    public function getAreas($cityId)
-    {
-        $areas = Area::where('city_id', $cityId)->get();
-        return response()->json($areas);
-    }
-
+    /**
+     * Store a new package in the database.
+     */
     public function store(Request $request)
     {
+        // Validate the request
         $validated = $request->validate([
-            'country_id' => 'required',
-            'city_id' => 'required',
-            'area_id' => 'required',
-            'property_id' => 'required',
-            'name' => 'required|string',
+            'country_id' => 'required|exists:countries,id',
+            'city_id' => 'required|exists:cities,id',
+            'area_id' => 'required|exists:areas,id',
+            'property_id' => 'required|exists:properties,id',
+            'name' => 'required|string|max:255',
             'address' => 'required|string',
-            'map_link' => 'nullable|string',
-            'number_of_kitchens' => 'required|integer',
-            'number_of_rooms' => 'required|integer',
-            'common_bathrooms' => 'required|integer',
-            'seating' => 'required|integer',
+            'map_link' => 'nullable|url',
+            'number_of_kitchens' => 'required|integer|min:0',
+            'number_of_rooms' => 'required|integer|min:0',
+            'common_bathrooms' => 'required|integer|min:0',
+            'seating' => 'required|integer|min:0',
             'details' => 'nullable|string',
-            'rooms' => 'array',
+            'video_link' => 'nullable|url',
+            'expiration_date' => 'required|date|after:today',
+            'selection' => 'required|in:entire,rooms',
+            'entireProperty.prices.*.type' => 'required|in:Day,Week,Month',
+            'entireProperty.prices.*.fixed_price' => 'required|numeric',
+            'entireProperty.prices.*.discount_price' => 'nullable|numeric',
+            'entireProperty.prices.*.booking_price' => 'required|numeric',
+            'rooms' => 'nullable|array',
             'rooms.*.name' => 'required|string',
             'rooms.*.number_of_beds' => 'required|integer',
             'rooms.*.number_of_bathrooms' => 'required|integer',
-            'rooms.*.prices' => 'array',
+            'rooms.*.prices' => 'required|array',
             'rooms.*.prices.*.type' => 'required|in:Day,Week,Month',
             'rooms.*.prices.*.fixed_price' => 'required|numeric',
             'rooms.*.prices.*.discount_price' => 'nullable|numeric',
             'rooms.*.prices.*.booking_price' => 'required|numeric',
+            'freeMaintains' => 'array',
+            'freeMaintains.*' => 'exists:maintains,id',
+            'freeAmenities' => 'array',
+            'freeAmenities.*' => 'exists:amenities,id',
             'paidMaintains' => 'array',
             'paidMaintains.*.maintain_id' => 'required|exists:maintains,id',
             'paidMaintains.*.price' => 'required|numeric',
             'paidAmenities' => 'array',
             'paidAmenities.*.amenity_id' => 'required|exists:amenities,id',
             'paidAmenities.*.price' => 'required|numeric',
-            'photos' => 'array',
-            'photos.*' => 'image|max:1024',
-            'entireProperty' => 'array',
-            'entireProperty.prices' => 'array',
-            'entireProperty.prices.*.type' => 'required_if:selection,entire|in:Day,Week,Month',
-            'entireProperty.prices.*.fixed_price' => 'required_if:selection,entire|numeric',
-            'entireProperty.prices.*.discount_price' => 'nullable|numeric',
-            'entireProperty.prices.*.booking_price' => 'required_if:selection,entire|numeric',
-            'video_link' => 'nullable|url',
-            'expiration_date' => 'required|date|after:today',
-            'selection' => 'required|in:entire,rooms',
-            'freeMaintains' => 'array',
-            'freeMaintains.*' => 'exists:maintains,id',
-            'freeAmenities' => 'array',
-            'freeAmenities.*' => 'exists:amenities,id',
+            'photos.*' => 'nullable|image|max:2048',
         ]);
 
-        try {
-            \DB::beginTransaction();
-
-            // Create package
-            $package = $this->createPackage($validated);
-
-            // Handle selection type (entire property or rooms)
-            if ($validated['selection'] === 'entire') {
-                $this->handleEntireProperty($package, $validated['entireProperty']);
-            } else {
-                $this->handleRooms($package, $validated['rooms']);
-            }
-
-            // Handle maintains and amenities
-            $this->handleMaintainsAndAmenities($package, $validated);
-
-            // Handle photo uploads
-            if ($request->hasFile('photos')) {
-                $this->handlePhotos($package, $request->file('photos'));
-            }
-
-            \DB::commit();
-
-            return redirect()->route('admin.packages.index')
-                ->with('success', 'Package created successfully.');
-
-        } catch (\Exception $e) {
-            \DB::rollBack();
-            return back()->with('error', 'Error creating package: ' . $e->getMessage());
+        $status = 'active';
+        if (strtotime($request->expiration_date) <= strtotime(now())) {
+            $status = 'expired';
         }
-    }
 
-    private function createPackage($data)
-    {
-        $status = strtotime($data['expiration_date']) <= strtotime(now()) ? 'expired' : 'active';
-
-        return Package::create([
-            'country_id' => $data['country_id'],
-            'city_id' => $data['city_id'],
-            'area_id' => $data['area_id'],
-            'property_id' => $data['property_id'],
-            'name' => $data['name'],
-            'address' => $data['address'],
-            'map_link' => $data['map_link'],
-            'number_of_kitchens' => $data['number_of_kitchens'],
-            'number_of_rooms' => $data['number_of_rooms'],
-            'common_bathrooms' => $data['common_bathrooms'],
-            'seating' => $data['seating'],
-            'details' => $data['details'],
-            'video_link' => $data['video_link'],
-            'expiration_date' => $data['expiration_date'],
+        // Create the package
+        $package = Package::create([
+            'country_id' => $validated['country_id'],
+            'city_id' => $validated['city_id'],
+            'area_id' => $validated['area_id'],
+            'property_id' => $validated['property_id'],
+            'name' => $validated['name'],
+            'address' => $validated['address'],
+            'map_link' => $validated['map_link'],
+            'number_of_kitchens' => $validated['number_of_kitchens'],
+            'number_of_rooms' => $validated['number_of_rooms'],
+            'common_bathrooms' => $validated['common_bathrooms'],
+            'seating' => $validated['seating'],
+            'details' => $validated['details'],
+            'video_link' => $validated['video_link'],
+            'expiration_date' => $validated['expiration_date'],
             'status' => $status,
             'user_id' => Auth::id(),
         ]);
-    }
 
-    private function handleEntireProperty($package, $entirePropertyData)
-    {
-        $entireProperty = EntireProperty::create([
-            'user_id' => Auth::id(),
-            'package_id' => $package->id,
-        ]);
-
-        foreach ($entirePropertyData['prices'] as $priceData) {
-            RoomPrice::create([
-                'entire_property_id' => $entireProperty->id,
-                'type' => $priceData['type'],
-                'fixed_price' => $priceData['fixed_price'],
-                'discount_price' => $priceData['discount_price'],
-                'booking_price' => $priceData['booking_price'],
-                'user_id' => Auth::id(),
-            ]);
-        }
-    }
-
-    private function handleRooms($package, $roomsData)
-    {
-        foreach ($roomsData as $roomData) {
-            $room = $package->rooms()->create([
-                'name' => $roomData['name'],
-                'number_of_beds' => $roomData['number_of_beds'],
-                'number_of_bathrooms' => $roomData['number_of_bathrooms'],
+        // Handle storing prices for either entire property or rooms
+        if ($request->selection === 'entire') {
+            $entireProperty = EntireProperty::create([
+                'package_id' => $package->id,
                 'user_id' => Auth::id(),
             ]);
 
-            foreach ($roomData['prices'] as $priceData) {
-                $room->prices()->create([
-                    'type' => $priceData['type'],
-                    'fixed_price' => $priceData['fixed_price'],
-                    'discount_price' => $priceData['discount_price'],
-                    'booking_price' => $priceData['booking_price'],
+            foreach ($validated['entireProperty']['prices'] as $price) {
+                RoomPrice::create([
+                    'entire_property_id' => $entireProperty->id,
+                    'type' => $price['type'],
+                    'fixed_price' => $price['fixed_price'],
+                    'discount_price' => $price['discount_price'],
+                    'booking_price' => $price['booking_price'],
                     'user_id' => Auth::id(),
                 ]);
             }
-        }
-    }
-
-    private function handleMaintainsAndAmenities($package, $data)
-    {
-        // Handle free maintains
-        if (!empty($data['freeMaintains'])) {
-            foreach ($data['freeMaintains'] as $maintainId) {
-                $package->maintains()->attach($maintainId, [
-                    'is_paid' => false,
+        } else {
+            foreach ($validated['rooms'] as $room) {
+                $roomModel = $package->rooms()->create([
+                    'name' => $room['name'],
+                    'number_of_beds' => $room['number_of_beds'],
+                    'number_of_bathrooms' => $room['number_of_bathrooms'],
                     'user_id' => Auth::id(),
                 ]);
+
+                foreach ($room['prices'] as $price) {
+                    $roomModel->prices()->create([
+                        'type' => $price['type'],
+                        'fixed_price' => $price['fixed_price'],
+                        'discount_price' => $price['discount_price'],
+                        'booking_price' => $price['booking_price'],
+                        'user_id' => Auth::id(),
+                    ]);
+                }
             }
         }
 
-        // Handle free amenities
-        if (!empty($data['freeAmenities'])) {
-            foreach ($data['freeAmenities'] as $amenityId) {
-                $package->amenities()->attach($amenityId, [
-                    'is_paid' => false,
-                    'user_id' => Auth::id(),
-                ]);
-            }
+        // Attach amenities and maintains
+        if ($request->freeMaintains) {
+            $package->maintains()->syncWithPivotValues($request->freeMaintains, ['is_paid' => false, 'user_id' => Auth::id()]);
         }
 
-        // Handle paid maintains
-        if (!empty($data['paidMaintains'])) {
-            foreach ($data['paidMaintains'] as $maintainData) {
-                $package->maintains()->attach($maintainData['maintain_id'], [
-                    'is_paid' => true,
-                    'price' => $maintainData['price'],
-                    'user_id' => Auth::id(),
-                ]);
-            }
+        if ($request->freeAmenities) {
+            $package->amenities()->syncWithPivotValues($request->freeAmenities, ['is_paid' => false, 'user_id' => Auth::id()]);
         }
 
-        // Handle paid amenities
-        if (!empty($data['paidAmenities'])) {
-            foreach ($data['paidAmenities'] as $amenityData) {
-                $package->amenities()->attach($amenityData['amenity_id'], [
-                    'is_paid' => true,
-                    'price' => $amenityData['price'],
-                    'user_id' => Auth::id(),
-                ]);
-            }
-        }
-    }
-
-    private function handlePhotos($package, $photos)
-    {
-        foreach ($photos as $photo) {
-            $path = $photo->store('photos', 'public');
-            $package->photos()->create([
-                'url' => $path,
+        foreach ($request->paidMaintains as $maintain) {
+            $package->maintains()->attach($maintain['maintain_id'], [
+                'is_paid' => true,
+                'price' => $maintain['price'],
                 'user_id' => Auth::id(),
             ]);
         }
+
+        foreach ($request->paidAmenities as $amenity) {
+            $package->amenities()->attach($amenity['amenity_id'], [
+                'is_paid' => true,
+                'price' => $amenity['price'],
+                'user_id' => Auth::id(),
+            ]);
+        }
+
+        // Handle photo uploads
+        if ($request->hasFile('photos')) {
+            foreach ($request->file('photos') as $photo) {
+                $path = $photo->store('photos', 'public');
+                $package->photos()->create([
+                    'url' => $path,
+                    'user_id' => Auth::id(),
+                ]);
+            }
+        }
+
+        return redirect()->route('admin.packages.index')->with('message', 'Package created successfully.');
     }
 }

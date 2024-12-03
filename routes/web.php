@@ -7,6 +7,7 @@ use App\Http\Controllers\RolePermission\PermissionController;
 use App\Http\Controllers\RolePermission\RoleController;
 use App\Http\Controllers\RolePermission\RolePermissionController;
 use App\Http\Controllers\User\UserController;
+use App\Http\Controllers\User\UserPackageController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -83,6 +84,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('packages', PackageController::class);
     });
+});
+
+Route::prefix('user')->group(function () {
+    // List of packages
+    Route::get('/packages', [UserPackageController::class, 'index'])->name('user.packages.index');
+
+    // Show a specific package
+    Route::get('/packages/{package}', [UserPackageController::class, 'show'])->name('user.packages.show');
 });
 
 require __DIR__.'/auth.php';

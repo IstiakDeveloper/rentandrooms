@@ -12,7 +12,7 @@
         </template>
 
         <div class="max-w-7xl mx-auto p-6">
-            <form @submit.prevent="submit" class="space-y-8">
+            <form @submit.prevent="submit" enctype="multipart/form-data" class="space-y-8">
                 <!-- Error Display -->
                 <div v-if="form.errors"
                     class="bg-red-50 dark:bg-red-900/50 border-l-4 border-red-500 p-4 mb-6 rounded-r-lg">
@@ -316,6 +316,9 @@ import PaidFeatures from '@/Components/PaidFeatures.vue';
 import Toast from '@/Components/UI/Toast.vue';
 
 
+
+const toastRef = ref(null);
+
 const props = defineProps({
     countries: {
         type: Array,
@@ -492,24 +495,74 @@ const removePaidAmenity = (index) => {
     form.paidAmenities.splice(index, 1);
 };
 
-// Photo handling
+
 const handlePhotoUpload = (e) => {
     const files = Array.from(e.target.files).filter(file => file.type.startsWith('image/'));
+    const maxSize = 1024 * 1024; // 1MB
 
     files.forEach(file => {
-        if (file.size > 1024 * 1024) { // Check for max size 1MB
-            toast.error(`${file.name} is too large. Maximum size is 1MB`);
+        if (file.size > maxSize) {
+            toastRef.value?.show({
+                type: 'error',
+                message: `${file.name} is too large. Maximum size is 1MB`
+            });
             return;
         }
 
         const reader = new FileReader();
         reader.onload = (e) => {
             form.photos.push({
-                file, // Keep the original file object
-                preview: e.target.result // Preview for display
+                file,
+                preview: e.target.result
             });
         };
         reader.readAsDataURL(file);
+    });
+};
+
+const submit = () => {
+    // Create a new FormData instance
+    const formData = new FormData();
+
+    // First append all non-file form data
+    Object.keys(form).forEach(key => {
+        if (key !== 'photos') {
+            if (typeof form[key] === 'object') {
+                formData.append(key, JSON.stringify(form[key]));
+            } else {
+                formData.append(key, form[key]);
+            }
+        }
+    });
+
+    // Then append photos properly
+    if (form.photos.length > 0) {
+        form.photos.forEach((photo, index) => {
+            if (photo.file) {
+                formData.append(`photos[]`, photo.file); // Note the change here to photos[]
+            }
+        });
+    }
+
+    // Submit the form with the proper FormData
+    form.post(route('admin.packages.store'), {
+        data: formData,
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            form.reset();
+            toastRef.value?.show({
+                type: 'success',
+                message: 'Package created successfully'
+            });
+        },
+        onError: (errors) => {
+            console.error('Form submission errors:', errors); // For debugging
+            toastRef.value?.show({
+                type: 'error',
+                message: Object.values(errors)[0]
+            });
+        }
     });
 };
 
@@ -517,25 +570,6 @@ const removePhoto = (index) => {
     form.photos.splice(index, 1);
 };
 
-// Form submission
-const submit = () => {
-    console.log('Photos before submission:', form.photos); // Debugging
-
-    const formData = new FormData();
-
-    // Append photos properly
-    form.photos.forEach((photo, index) => {
-        if (photo.file) {
-            formData.append(`photos[${index}]`, photo.file); // Append the actual file object
-        }
-    });
-
-    // Handle other form data...
-    form.post(route('admin.packages.store'), {
-        forceFormData: true,
-        preserveScroll: true,
-    });
-};
 
 // Watchers
 watch(() => form.selection, (newValue) => {

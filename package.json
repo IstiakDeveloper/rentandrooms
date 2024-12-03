@@ -22,7 +22,10 @@
         "@heroicons/vue": "^2.2.0",
         "jspdf": "^2.5.1",
         "laravel-permission-to-vuejs": "^3.0.7",
+        "lodash": "^4.17.21",
+        "photoswipe": "^5.4.4",
         "primeicons": "^7.0.0",
-        "primevue": "^4.0.5"
+        "primevue": "^4.0.5",
+        "vue-lodash": "^2.1.2"
     }
 }

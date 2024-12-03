@@ -47,6 +47,17 @@ class Package extends Model
     }
 
 
+
+    public function packageMaintains()
+    {
+        return $this->hasMany(PackageMaintain::class);
+    }
+
+    public function packageAmenities()
+    {
+        return $this->hasMany(PackageAmenity::class);
+    }
+
     public function amenities(): BelongsToMany
     {
         return $this->belongsToMany(Amenity::class, 'package_amenities')

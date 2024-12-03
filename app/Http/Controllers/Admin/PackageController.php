@@ -98,35 +98,55 @@ class PackageController extends Controller
             'entireProperty.prices.*.booking_price' => 'required_if:selection,entire|numeric',
             'freeMaintains' => 'array',
             'freeAmenities' => 'array',
-
-
+            'photos' => 'nullable|array',
+            'photos.*' => 'image|mimes:jpeg,png,jpg,gif|max:1024'
         ]);
 
-        // dd($request->all(), $request->file('photos'));
-        $package = Package::create([
-            ...$validated,
-            'status' => strtotime($validated['expiration_date']) <= strtotime(now()) ? 'expired' : 'active',
-            'user_id' => Auth::id(),
-        ]);
+        try {
+            \DB::beginTransaction();
 
-        if ($request->hasFile('photos')) {
-            foreach ($request->file('photos') as $photo) {
-                // Debug the photo contents
-                dd($photo);
+            // Create package
+            $package = Package::create([
+                ...$validated,
+                'status' => strtotime($validated['expiration_date']) <= strtotime(now()) ? 'expired' : 'active',
+                'user_id' => Auth::id(),
+            ]);
+
+            // Handle property selection
+            if ($validated['selection'] === 'entire') {
+                $this->handleEntirePropertyCreation($package, $validated['entireProperty']);
+            } else {
+                $this->handleRoomsCreation($package, $validated['rooms']);
             }
+
+            // Handle maintains and amenities
+            $this->handleMaintainsAndAmenities($package, $validated);
+
+            // Handle photos
+            if ($request->hasFile('photos')) {
+                foreach ($request->file('photos') as $photo) {
+                    if ($photo->isValid()) {
+                        $path = $photo->store('photos', 'public');
+                        $package->photos()->create([
+                            'url' => $path,
+                            'user_id' => Auth::id(),
+                        ]);
+                    }
+                }
+            }
+
+            \DB::commit();
+
+            return redirect()->route('admin.packages.index')
+                ->with('success', 'Package created successfully.');
+        } catch (\Exception $e) {
+            \DB::rollback();
+            \Log::error('Package creation failed: ' . $e->getMessage());
+
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['error' => 'Failed to create package. ' . $e->getMessage()]);
         }
-
-        if ($validated['selection'] === 'entire') {
-            $this->handleEntirePropertyCreation($package, $validated['entireProperty']);
-        } else {
-            $this->handleRoomsCreation($package, $validated['rooms']);
-        }
-
-        $this->handleMaintainsAndAmenities($package, $validated);
-        $this->handlePhotos($package, $request);
-
-        return redirect()->route('admin.packages.index')
-            ->with('success', 'Package created successfully.');
     }
 
     public function edit(Package $package)
@@ -265,13 +285,23 @@ class PackageController extends Controller
 
     private function handlePhotos($package, $request)
     {
-        if ($request->hasFile('photos')) {
-            foreach ($request->file('photos') as $photo) {
-                $path = $photo->store('photos', 'public');
-                $package->photos()->create([
-                    'url' => $path,
-                    'user_id' => Auth::id(),
-                ]);
+        if (!$request->hasFile('photos')) {
+            return;
+        }
+
+        foreach ($request->file('photos') as $photo) {
+            if ($photo->isValid()) {
+                try {
+                    $path = $photo->store('photos', 'public');
+
+                    $package->photos()->create([
+                        'url' => $path,
+                        'user_id' => Auth::id(),
+                    ]);
+                } catch (\Exception $e) {
+                    \Log::error('Photo upload failed: ' . $e->getMessage());
+                    throw $e;
+                }
             }
         }
     }

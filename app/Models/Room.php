@@ -16,17 +16,14 @@ class Room extends Model
     {
         return $this->belongsTo(Package::class);
     }
-    public function prices()
-    {
-        return $this->hasMany(RoomPrice::class);
-    }
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
+
     public function roomPrices()
     {
         return $this->hasMany(RoomPrice::class);
     }
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

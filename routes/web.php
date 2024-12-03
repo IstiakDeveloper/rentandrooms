@@ -71,11 +71,18 @@ Route::middleware('auth')->group(function () {
 
 });
 
-Route::middleware(['auth'])->group(function () {
-    Route::get('/admin/packages/create', [PackageController::class, 'create'])->name('admin.packages.create');
-    Route::post('/admin/packages', [PackageController::class, 'store'])->name('admin.packages.store');
-    Route::get('/admin/cities/{country}', [PackageController::class, 'getCities']);
-    Route::get('/admin/areas/{city}', [PackageController::class, 'getAreas']);
+// Route::middleware(['auth'])->group(function () {
+//     Route::get('/admin/packages/create', [PackageController::class, 'create'])->name('admin.packages.create');
+//     Route::post('/admin/packages', [PackageController::class, 'store'])->name('admin.packages.store');
+//     Route::get('/admin/cities/{country}', [PackageController::class, 'getCities']);
+//     Route::get('/admin/areas/{city}', [PackageController::class, 'getAreas']);
+// });
+
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::prefix('admin')->name('admin.')->group(function () {
+        Route::resource('packages', PackageController::class);
+    });
 });
 
 require __DIR__.'/auth.php';
